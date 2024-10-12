@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstring>
-#include <memory>
 
 #include <gst/gst.h>
 #include <gst/video/videooverlay.h>

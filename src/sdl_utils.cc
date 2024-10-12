@@ -3,16 +3,16 @@
 
 #include <cstring>
 #include <optional>
+
 #include <SDL.h>
 #include <SDL_render.h>
 #include <SDL_video.h>
-
 #include <spdlog/spdlog.h>
 
 namespace player {
 namespace {
 
-void PrintRenderInfo(SDL_Renderer* renderer) {
+void PrintRenderInfo(SDL_Renderer *renderer) {
   SDL_RendererInfo info;
 
   if (SDL_GetRendererInfo(renderer, &info) == 0) {
@@ -22,7 +22,7 @@ void PrintRenderInfo(SDL_Renderer* renderer) {
   }
 }
 
-void PrintWindowManagerInfo(const SDL_SysWMinfo& info) {
+void PrintWindowManagerInfo(const SDL_SysWMinfo &info) {
   switch (info.subsystem) {
     case SDL_SYSWM_X11:
       spdlog::info("Window manager: X11");

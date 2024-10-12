@@ -1,22 +1,22 @@
 #include <cstring>
 #include <optional>
-#include <SDL.h>
-#include <SDL_syswm.h>
 
 #include <gst/gst.h>
+#include <SDL.h>
+#include <SDL_syswm.h>
+#include <spdlog/spdlog.h>
 
 #include "pipeline.h"
 #include "sdl_utils.h"
-#include <spdlog/spdlog.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   auto sdl = player::InitSDL(1024, 768);
   if (not sdl) {
     return -1;
   }
 
-  void* display = nullptr;
-  void* surface = nullptr;
+  void *display = nullptr;
+  void *surface = nullptr;
 
   if (sdl->wm_info.subsystem == SDL_SYSWM_WAYLAND) {
     spdlog::info("got wl info");
