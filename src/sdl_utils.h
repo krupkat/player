@@ -1,11 +1,10 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 
-#include <SDL.h>
-#include <SDL_syswm.h>
+#include <SDL3/SDL.h>
 
 #include "utils.h"
 
@@ -17,11 +16,21 @@ using SDLRendererPtr =
 
 struct SDLContext {
   utils::DestructorCallback sdl_quit;
-  SDLWindowPtr window;
-  SDLRendererPtr renderer;
-  SDL_SysWMinfo wm_info;
+  std::string wm;
 };
 
-std::optional<SDLContext> InitSDL(int width, int height);
+struct SDLWindowContext {
+  SDLWindowPtr window;
+  SDLRendererPtr renderer;
+};
+
+std::optional<SDLContext> InitSDL();
+
+std::optional<SDLWindowContext> InitWindow(const char* title, int width,
+                                           int height, SDL_WindowFlags flags);
+
+std::optional<SDLWindowContext> InitPopupWindow(SDL_Window* parent, int width,
+                                                int height,
+                                                SDL_WindowFlags flags);
 
 }  // namespace player

@@ -4,85 +4,101 @@
 #include <cstring>
 #include <optional>
 
-#include <SDL.h>
-#include <SDL_render.h>
-#include <SDL_video.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_render.h>
 #include <spdlog/spdlog.h>
 
 namespace player {
 namespace {
 
-void PrintRenderInfo(SDL_Renderer *renderer) {
-  SDL_RendererInfo info;
-
-  if (SDL_GetRendererInfo(renderer, &info) == 0) {
-    spdlog::info("Current SDL_Renderer: {}", info.name);
+void PrintRenderInfo(SDL_Renderer* renderer) {
+  if (const auto* name = SDL_GetRendererName(renderer)) {
+    spdlog::info("Current SDL_Renderer: {}", name);
   } else {
     spdlog::error("Failed to get SDL_RendererInfo: {}", SDL_GetError());
   }
 }
 
-void PrintWindowManagerInfo(const SDL_SysWMinfo &info) {
-  switch (info.subsystem) {
-    case SDL_SYSWM_X11:
-      spdlog::info("Window manager: X11");
-      break;
-    case SDL_SYSWM_WAYLAND:
-      spdlog::info("Window manager: Wayland");
-      break;
-    default:
-      spdlog::info("Window manager: Unknown");
-      break;
-  }
-}
 }  // namespace
 
-std::optional<SDLContext> InitSDL(int width, int height) {
-  const bool has_wayland_support = (SDL_VideoInit("wayland") == 0);
+std::optional<SDLContext> InitSDL() {
+  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "wayland,x11");
 
-  if (has_wayland_support) {
-    SDL_SetHint(SDL_HINT_VIDEODRIVER, "wayland,x11");
-  }
-
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
     spdlog::error("Error: {}", SDL_GetError());
     return {};
   }
   auto sdl_quit = utils::DestructorCallback([] { SDL_Quit(); });
 
-  SDLWindowPtr window = {
-      SDL_CreateWindow("Player", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                       width, height, SDL_WINDOW_RESIZABLE),
-      &SDL_DestroyWindow};
+  std::string wm = SDL_GetCurrentVideoDriver();
+  spdlog::info("Current window manager: {}", wm);
 
-  if (window == nullptr) {
-    spdlog::error("Error creating SDL_Window! {}", SDL_GetError());
-    return {};
+  return SDLContext{std::move(sdl_quit), std::move(wm)};
+}
+
+std::optional<SDLWindowContext> InitWindow(const char* title, int width,
+                                           int height, SDL_WindowFlags flags) {
+  SDLWindowPtr window = {nullptr, {&SDL_DestroyWindow}};
+  SDLRendererPtr renderer = {nullptr, {&SDL_DestroyRenderer}};
+
+  {
+    SDL_Window* window_raw;
+    SDL_Renderer* renderer_raw;
+
+    if (!SDL_CreateWindowAndRenderer(title, width, height, flags, &window_raw,
+                                     &renderer_raw)) {
+      spdlog::error("Error creating SDL_Window! {}", SDL_GetError());
+    }
+
+    window = {window_raw, &SDL_DestroyWindow};
+    renderer = {renderer_raw, &SDL_DestroyRenderer};
   }
 
-  SDLRendererPtr renderer = {
-      SDL_CreateRenderer(window.get(), -1,
-                         SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED),
-      &SDL_DestroyRenderer};
-
-  if (renderer == nullptr) {
-    spdlog::error("Error creating SDL_Renderer! {}", SDL_GetError());
+  if (!SDL_SetRenderVSync(renderer.get(), 1)) {
+    spdlog::error("Error setting VSync! {}", SDL_GetError());
     return {};
   }
 
   PrintRenderInfo(renderer.get());
 
-  SDL_SysWMinfo wm_info;
-  SDL_VERSION(&wm_info.version);
+  return SDLWindowContext{std::move(window), std::move(renderer)};
+}
 
-  if (SDL_GetWindowWMInfo(window.get(), &wm_info) == SDL_FALSE) {
-    spdlog::error("Error querying window manager info! {}", SDL_GetError());
+// SDL_CreatePopupWindow
+
+std::optional<SDLWindowContext> InitPopupWindow(SDL_Window* parent, int width,
+                                                int height,
+                                                SDL_WindowFlags flags) {
+  auto window =
+      SDLWindowPtr{SDL_CreatePopupWindow(parent, 0, 0, width, height, flags),
+                   &SDL_DestroyWindow};
+
+  if (window.get() == nullptr) {
+    spdlog::error("Error creating SDL_Window! {}", SDL_GetError());
     return {};
   }
 
-  PrintWindowManagerInfo(wm_info);
+  auto renderer = SDLRendererPtr{SDL_CreateRenderer(window.get(), NULL),
+                                 &SDL_DestroyRenderer};
 
-  return SDLContext{std::move(sdl_quit), std::move(window), std::move(renderer),
-                    wm_info};
+  if (renderer.get() == nullptr) {
+    spdlog::error("Error creating SDL_Renderer! {}", SDL_GetError());
+    return {};
+  }
+
+  if (!SDL_SetRenderVSync(renderer.get(), 1)) {
+    spdlog::error("Error setting VSync! {}", SDL_GetError());
+    return {};
+  }
+
+  // if (!SDL_SetWindowAlwaysOnTop(window.get(), false)) {
+  //   spdlog::error("Error setting window flag! {}", SDL_GetError());
+  //   return {};
+  // }
+
+  PrintRenderInfo(renderer.get());
+
+  return SDLWindowContext{std::move(window), std::move(renderer)};
 }
+
 }  // namespace player

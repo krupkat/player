@@ -1,5 +1,9 @@
 { pkgs ? import <nixpkgs> { } }:
 
+let
+  sdl3 = pkgs.callPackage ./sdl3.nix {};
+in
+
 pkgs.mkShell {
 
   nativeBuildInputs = with pkgs; [
@@ -10,8 +14,11 @@ pkgs.mkShell {
 
   buildInputs = with pkgs; [
     clang-tools
-    SDL2
+    sdl3.dev
     spdlog
+    wayland-scanner
+    wayland-protocols
+    wayland.dev
     # GStreamer
     gst_all_1.gstreamer
     gst_all_1.gst-plugins-base

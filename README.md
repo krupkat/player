@@ -9,3 +9,4 @@ cmake --build build
 
 Todo:
  - use exceptions where appropriate
+ - in sdl3 check SDL_ROCKCHIP
